@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Landmark, Lock, Mail, Key, Shield, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Landmark, Lock, Mail, Key, Shield, ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react';
 
 interface LoginPageProps {
   onBackToPublic: () => void;
@@ -58,13 +58,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
     setErrorMessage(null);
   };
 
+  const handleQuickLogin = async (demo: typeof demoAccounts[0]) => {
+    setEmail(demo.email);
+    setPassword(demo.pass);
+    setErrorMessage(null);
+    setIsLoading(true);
+
+    try {
+      await login({ email: demo.email, password: demo.pass });
+      toast.success(`Authenticated as ${demo.role}: Welcome, ${demo.name}!`);
+      onLoginSuccess();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Authentication failed. Please check credentials.');
+      toast.error(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setIsLoading(true);
 
     try {
-      await login({ email, password });
+      await login({ email: email.trim(), password: password.trim() });
       toast.success('Authenticated successfully. Welcome to HeritageVault!');
       onLoginSuccess();
     } catch (err: any) {
@@ -74,6 +92,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
       setIsLoading(false);
     }
   };
+
+  const activeDemo = demoAccounts.find((d) => d.email === email);
 
   return (
     <div className="login-page-wrapper">
@@ -93,7 +113,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
             <p className="login-subtitle">
               Government Museum Chennai • Staff Management Portal
             </p>
-            <span className="museum-code-badge">CHN-MUS-001</span>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', marginTop: '6px' }}>
+              <span className="museum-code-badge">CHN-MUS-001</span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.75rem',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  fontWeight: 500,
+                }}
+              >
+                <Sparkles size={12} /> Multi-Device Cloud Verified
+              </span>
+            </div>
           </div>
 
           {errorMessage && (
@@ -143,7 +181,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
                 </>
               ) : (
                 <>
-                  <Lock size={18} /> Sign In to Management System
+                  <Lock size={18} /> Sign In as {activeDemo ? activeDemo.role : 'Staff'}
                 </>
               )}
             </button>
@@ -153,7 +191,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
           <div className="demo-accounts-box">
             <div className="demo-box-header">
               <CheckCircle2 size={15} />
-              <span>Quick Demo Role Switcher (One-Click Selection)</span>
+              <span>Quick Demo Role Switcher (One-Click Selection & Sign-In)</span>
             </div>
             <div className="demo-buttons-grid">
               {demoAccounts.map((demo) => {
@@ -164,6 +202,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
                     type="button"
                     className={`demo-role-btn ${isSelected ? 'selected' : ''}`}
                     onClick={() => handleDemoSelect(demo)}
+                    onDoubleClick={() => handleQuickLogin(demo)}
+                    title={`Click to select, double-click to instantly sign in as ${demo.role}`}
                   >
                     <div className="demo-btn-top">
                       <span className="demo-badge" style={{ backgroundColor: `${demo.color}20`, color: demo.color }}>
@@ -172,6 +212,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToPublic, onLoginSuc
                       <span className="demo-btn-name">{demo.name}</span>
                     </div>
                     <span className="demo-btn-desc">{demo.desc}</span>
+                    {isSelected && (
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          color: '#d97706',
+                          fontWeight: 600,
+                          marginTop: '4px',
+                          display: 'block',
+                          textAlign: 'left',
+                        }}
+                      >
+                        ✓ Selected • Click 'Sign In' above to enter
+                      </span>
+                    )}
                   </button>
                 );
               })}

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { api } from '../services/api';
 
 interface AuthContextType {
@@ -18,11 +18,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem('hv_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      if (parsed?.role) {
+        parsed.role = parsed.role.toLowerCase() as UserRole;
+      }
+      return parsed;
     } catch {
       return null;
     }
   });
+
   const [token, setToken] = useState<string | null>(() => {
     try {
       return localStorage.getItem('hv_token');
@@ -30,20 +36,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   });
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let isMounted = true;
+
     async function verifyAuth() {
       if (token) {
         try {
           const res = await api.getMe();
-          if (isMounted) {
-            setUser(res.user);
-            localStorage.setItem('hv_user', JSON.stringify(res.user));
+          if (isMounted && res?.user) {
+            const normalizedUser: User = {
+              ...res.user,
+              role: res.user.role.toLowerCase() as UserRole,
+            };
+            setUser(normalizedUser);
+            localStorage.setItem('hv_user', JSON.stringify(normalizedUser));
           }
         } catch (e) {
-          if (isMounted) {
+          // In offline or cloud demo environments, retain the local user session
+          const saved = localStorage.getItem('hv_user');
+          if (!saved && isMounted) {
             logout();
           }
         }
@@ -65,10 +79,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (credentials: { email: string; password: string }) => {
     const res = await api.login(credentials);
-    setUser(res.user);
+    const normalizedUser: User = {
+      ...res.user,
+      role: res.user.role.toLowerCase() as UserRole,
+    };
+    setUser(normalizedUser);
     setToken(res.token);
     localStorage.setItem('hv_token', res.token);
-    localStorage.setItem('hv_user', JSON.stringify(res.user));
+    localStorage.setItem('hv_user', JSON.stringify(normalizedUser));
   };
 
   const logout = () => {
@@ -79,8 +97,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasRole = (...allowedRoles: string[]): boolean => {
-    if (!user) return false;
-    return allowedRoles.includes(user.role);
+    if (!user || !user.role) return false;
+    const userRoleLower = user.role.toLowerCase();
+    return allowedRoles.map((r) => r.toLowerCase()).includes(userRoleLower);
   };
 
   return (
