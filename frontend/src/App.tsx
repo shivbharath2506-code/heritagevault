@@ -20,7 +20,7 @@ export const App: React.FC = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoginView, setIsLoginView] = useState(false);
+  const [isLoginView, setIsLoginView] = useState(true);
 
   if (isLoading) {
     return (
